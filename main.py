@@ -57,7 +57,7 @@ def process_image(img_path, output_path, max_dimension, quality):
 
 def compress_images(input_folder, quality=65, max_dimension=1920):
     # Define the output folder path within the input folder
-    output_folder = os.path.join(input_folder, "zmensene")
+    output_folder = os.path.join(input_folder, "compressed")
     
     total_files = sum(len(files) for _, _, files in os.walk(input_folder) if output_folder not in _)
     processed_files = 0

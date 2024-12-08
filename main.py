@@ -31,7 +31,10 @@ def process_image(img_path, output_path, max_dimension, quality):
 
             # Convert all images to JPEG format to save space
             img = img.convert("RGB")
-            output_path = output_path.rsplit('.', 1)[0] + ".jpg"  # Change extension to .jpg
+            
+            # Append the suffix _zmensene to the file name
+            base_name, _ = os.path.splitext(output_path)
+            output_path = base_name + "_zmensene.jpg"
 
             # Calculate the new size, maintaining aspect ratio
             width, height = img.size

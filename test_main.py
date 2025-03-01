@@ -331,3 +331,113 @@ def test_compress_images_skips_compressed_folder(tmp_path):
 
     # Ensure the already compressed image remains
     assert existing_compressed_path.exists(), "Images in 'compressed' folder should be skipped."
+
+
+def test_correct_orientation_invalid_exif_tag(tmp_path):
+    """
+    If the image has EXIF data but the orientation tag is invalid or not recognized,
+    correct_orientation() should simply return the image without raising an error.
+    """
+    from PIL import Image
+
+    img_path = tmp_path / "bad_exif.jpg"
+    image = Image.new("RGB", (300, 300), color=(50, 100, 150))
+    image.save(img_path, "JPEG")
+
+    with Image.open(img_path) as img:
+        # Manually inject a bogus EXIF orientation if you like; for now we just confirm no crash
+        img.info["exif"] = b"FAKE_EXIF_DATA"  # purely illustrative, won't parse correctly
+        oriented = correct_orientation(img)
+        assert oriented.size == (300, 300), "Invalid orientation tag should not affect size."
+
+
+def test_process_image_corrupted_data(tmp_path):
+    """
+    If the file is recognized by Pillow but the data is corrupted,
+    process_image() should catch the error and return False.
+    (We simulate this by writing partial JPEG bytes to a file.)
+    """
+    corrupted_path = tmp_path / "corrupted.jpg"
+    with open(corrupted_path, "wb") as f:
+        # Write partial, invalid JPEG header
+        f.write(b"\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01")
+
+    output_path = tmp_path / "corrupted_output.jpg"
+    ok = process_image(str(corrupted_path), str(output_path), max_dimension=500, quality=80)
+    assert not ok, "process_image() should fail on corrupted image data."
+
+
+def test_process_image_output_exists(basic_image, tmp_path):
+    """
+    If an output file with the same name already exists, process_image() should overwrite it
+    or create the new '_zmensene.jpg'. Confirm that the final file is valid and updated.
+    """
+    # Create an existing file
+    output_path = tmp_path / "existing.jpg"
+    with open(output_path, "wb") as f:
+        f.write(b"OLD FILE DATA")
+
+    ok = process_image(str(basic_image), str(output_path), max_dimension=200, quality=85)
+    assert ok, "Should succeed even if output file already exists."
+
+    final_path = tmp_path / "existing_zmensene.jpg"
+    assert final_path.exists(), "Should still follow the '_zmensene.jpg' pattern."
+    # Check that it’s non-empty and likely a JPEG
+    with open(final_path, "rb") as f:
+        assert b"JFIF" in f.read(100), "File should now contain a valid JPEG header, not the old data."
+
+
+def test_compress_images_read_only_file(tmp_path):
+    """
+    If an image is read-only, compress_images() should still be able to open and read it,
+    as long as we have read permission. We simulate that scenario here.
+    """
+    input_folder = tmp_path / "read_only"
+    input_folder.mkdir()
+
+    img_path = input_folder / "readonly.png"
+    from PIL import Image
+    Image.new("RGB", (500, 500), color=(255, 255, 0)).save(img_path, "PNG")
+
+    # Make the file read-only
+    os.chmod(img_path, 0o444)  # Read-only for owner, group, others
+
+    compress_images(str(input_folder), quality=60, max_dimension=300)
+
+    compressed_folder = input_folder / "compressed"
+    out_file = compressed_folder / "readonly_zmensene.jpg"
+    assert out_file.exists(), "Should compress the read-only file into 'compressed' folder."
+    assert os.path.getsize(out_file) > 0, "Output file shouldn't be empty."
+
+
+def test_compress_images_mixed_file_types(tmp_path):
+    """
+    If the input folder contains both images and random non-image files,
+    only the images should be processed. Non-images should either be skipped or fail gracefully.
+    """
+    input_folder = tmp_path / "mixed"
+    input_folder.mkdir()
+
+    # Create a valid image
+    img_path = input_folder / "photo.jpg"
+    from PIL import Image
+    Image.new("RGB", (400, 300), color=(0, 128, 128)).save(img_path, "JPEG")
+
+    # Create a random text file
+    text_file = input_folder / "notes.txt"
+    text_file.write_text("This is not an image.")
+
+    # Run compress_images
+    compress_images(str(input_folder), quality=50, max_dimension=200)
+
+    compressed_folder = input_folder / "compressed"
+    assert compressed_folder.exists(), "A 'compressed' folder should be created."
+
+    out_img = compressed_folder / "photo_zmensene.jpg"
+    assert out_img.exists(), "JPEG image should be compressed."
+    assert os.path.getsize(out_img) > 0, "Output image shouldn't be empty."
+
+    # Confirm the text file didn't break the process
+    out_txt = compressed_folder / "notes_zmensene.jpg"
+    # Typically `process_image()` would fail on a non-image, so no .jpg output expected
+    assert not out_txt.exists(), "Non-image files typically won't produce a compressed file."

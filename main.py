@@ -51,6 +51,9 @@ def process_image(img_path, output_path, max_dimension, quality):
 def compress_images(input_folder, quality=65, max_dimension=1920, progress_callback=None):
     output_folder = os.path.join(input_folder, "compressed")
     total_files = sum(len(files) for _, _, files in os.walk(input_folder) if output_folder not in _)
+    if total_files == 0:
+        print(f"Compression completed: 0/0 files processed.")
+        return
     processed_files = 0
 
     with ThreadPoolExecutor() as executor:
@@ -103,33 +106,33 @@ def select_folder():
     if folder_selected:
         folder_var.set(folder_selected)
 
+if __name__ == "__main__":
+    # GUI Setup
+    root = tk.Tk()
+    root.title("Image Compressor")
+    root.geometry("450x350")
+    root.configure(bg="#f0f0f0")
 
-# GUI Setup
-root = tk.Tk()
-root.title("Image Compressor")
-root.geometry("450x350")
-root.configure(bg="#f0f0f0")
+    frame = tk.Frame(root, padx=10, pady=10, bg="#f0f0f0")
+    frame.pack(expand=True)
 
-frame = tk.Frame(root, padx=10, pady=10, bg="#f0f0f0")
-frame.pack(expand=True)
+    tk.Label(frame, text="Select Input Folder:", bg="#f0f0f0", font=("Arial", 12)).pack(pady=5)
+    folder_var = tk.StringVar()
+    folder_entry = tk.Entry(frame, textvariable=folder_var, width=40, font=("Arial", 10))
+    folder_entry.pack(pady=5)
+    tk.Button(frame, text="Browse", command=select_folder, font=("Arial", 10), bg="#4CAF50", fg="white").pack(pady=5)
 
-tk.Label(frame, text="Select Input Folder:", bg="#f0f0f0", font=("Arial", 12)).pack(pady=5)
-folder_var = tk.StringVar()
-folder_entry = tk.Entry(frame, textvariable=folder_var, width=40, font=("Arial", 10))
-folder_entry.pack(pady=5)
-tk.Button(frame, text="Browse", command=select_folder, font=("Arial", 10), bg="#4CAF50", fg="white").pack(pady=5)
+    tk.Label(frame, text="Quality (1-100):", bg="#f0f0f0", font=("Arial", 12)).pack(pady=5)
+    quality_var = tk.StringVar(value="65")
+    tk.Entry(frame, textvariable=quality_var, width=10, font=("Arial", 10)).pack(pady=5)
 
-tk.Label(frame, text="Quality (1-100):", bg="#f0f0f0", font=("Arial", 12)).pack(pady=5)
-quality_var = tk.StringVar(value="65")
-tk.Entry(frame, textvariable=quality_var, width=10, font=("Arial", 10)).pack(pady=5)
+    tk.Label(frame, text="Max Dimension:", bg="#f0f0f0", font=("Arial", 12)).pack(pady=5)
+    dim_var = tk.StringVar(value="1920")
+    tk.Entry(frame, textvariable=dim_var, width=10, font=("Arial", 10)).pack(pady=5)
 
-tk.Label(frame, text="Max Dimension:", bg="#f0f0f0", font=("Arial", 12)).pack(pady=5)
-dim_var = tk.StringVar(value="1920")
-tk.Entry(frame, textvariable=dim_var, width=10, font=("Arial", 10)).pack(pady=5)
+    tk.Button(frame, text="Start Compression", command=start_compression, font=("Arial", 12), bg="#2196F3",
+              fg="white").pack(pady=10)
+    progress_label = tk.Label(frame, text="", bg="#f0f0f0", font=("Arial", 10))
+    progress_label.pack(pady=10)
 
-tk.Button(frame, text="Start Compression", command=start_compression, font=("Arial", 12), bg="#2196F3",
-          fg="white").pack(pady=10)
-progress_label = tk.Label(frame, text="", bg="#f0f0f0", font=("Arial", 10))
-progress_label.pack(pady=10)
-
-root.mainloop()
+    root.mainloop()

@@ -195,7 +195,8 @@ def test_process_image_with_negative_max_dimension(basic_image, tmp_path, capsys
     ok = process_image(str(basic_image), str(out), max_dimension=-10, quality=50)
     captured = capsys.readouterr()
     assert not ok, "process_image() should fail gracefully with negative max_dimension."
-    assert "Could not process file" in captured.out, "Should print an error message."
+    assert "Error processing" in captured.out, "Should print an error message."
+    assert "height and width must be > 0" in captured.out, "Should print a size-related error."
     assert not (tmp_path / "negative_zmensene.jpg").exists()
 
 
@@ -246,7 +247,6 @@ def test_compress_images_empty_folder(tmp_path, capsys):
     compress_images(str(empty_folder), quality=65, max_dimension=1920)
 
     captured = capsys.readouterr()
-    assert "Starting compression for 0 images in" in captured.out
     assert "Compression completed: 0/0 files processed." in captured.out
 
 
